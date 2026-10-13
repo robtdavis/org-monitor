@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description
+  >Execution audit record for scheduled monitoring and alert delivery.</description>
+    <label>Org Monitoring Run</label>
+    <nameField>
+        <displayFormat>OMR-{000000}</displayFormat>
+        <label>Org Monitoring Run Number</label>
+        <type>AutoNumber</type>
+    </nameField>
+    <pluralLabel>Org Monitoring Runs</pluralLabel>
+    <sharingModel>Private</sharingModel>
+</CustomObject>

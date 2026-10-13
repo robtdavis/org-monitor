@@ -1,0 +1,249 @@
+<template>
+  <lightning-card
+    title="Org Monitoring Configuration"
+    icon-name="utility:settings"
+  >
+    <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+      <template lwc:if={isLoading}>
+        <lightning-spinner
+          alternative-text="Loading configuration"
+        ></lightning-spinner>
+      </template>
+
+      <template lwc:if={accessDenied}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_warning"
+          role="status"
+        >
+          <span class="slds-assistive-text">Access restricted</span>
+          <h2>
+            Only authorized administrators can view or edit org monitoring
+            configuration.
+          </h2>
+        </div>
+      </template>
+
+      <template lwc:if={loadError}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_error"
+          role="alert"
+        >
+          <span class="slds-assistive-text">Error</span>
+          <h2>{loadError}</h2>
+        </div>
+        <div class="slds-m-top_small">
+          <lightning-button
+            label="Try Again"
+            onclick={loadConfiguration}
+          ></lightning-button>
+        </div>
+      </template>
+
+      <template lwc:if={requiresInitialization}>
+        <div class="slds-box slds-theme_shade">
+          <h2 class="slds-text-heading_small">
+            Configuration is not initialized
+          </h2>
+          <p class="slds-m-top_x-small">
+            Create the default org monitoring configuration to begin. This
+            one-time action is available to authorized administrators.
+          </p>
+          <lightning-button
+            class="slds-m-top_medium"
+            label="Initialize Configuration"
+            variant="brand"
+            onclick={handleInitialize}
+            disabled={isInitializing}
+          ></lightning-button>
+        </div>
+      </template>
+
+      <template lwc:if={hasConfiguration}>
+        <div class="slds-grid slds-wrap slds-gutters">
+          <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+            <lightning-input
+              type="number"
+              name="warningPercent"
+              label="Warning threshold (%)"
+              min="0"
+              max="100"
+              step="0.1"
+              value={warningPercent}
+              onchange={handleFieldChange}
+              required
+            ></lightning-input>
+          </div>
+          <div class="slds-col slds-size_1-of-1 slds-large-size_1-of-2">
+            <lightning-input
+              type="number"
+              name="criticalPercent"
+              label="Critical threshold (%)"
+              min="0"
+              max="100"
+              step="0.1"
+              value={criticalPercent}
+              onchange={handleFieldChange}
+              required
+            ></lightning-input>
+          </div>
+          <div class="slds-col slds-size_1-of-1 slds-m-top_medium">
+            <lightning-input
+              type="toggle"
+              name="active"
+              label="Monitoring is active"
+              message-toggle-active="Active"
+              message-toggle-inactive="Paused"
+              checked={active}
+              onchange={handleFieldChange}
+            ></lightning-input>
+          </div>
+        </div>
+
+        <fieldset class="slds-form-element slds-m-top_large">
+          <legend class="slds-form-element__legend slds-form-element__label">
+            Days to run
+          </legend>
+          <div class="slds-grid slds-wrap">
+            <template for:each={dayOptions} for:item="day">
+              <div
+                class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4"
+                key={day.value}
+              >
+                <lightning-input
+                  type="checkbox"
+                  label={day.label}
+                  value={day.value}
+                  checked={day.checked}
+                  onchange={handleDayChange}
+                ></lightning-input>
+              </div>
+            </template>
+          </div>
+        </fieldset>
+
+        <div class="slds-grid slds-wrap slds-gutters slds-m-top_medium">
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+            <lightning-combobox
+              name="frequencyHours"
+              label="Frequency"
+              value={frequencyHours}
+              options={frequencyOptions}
+              onchange={handleFieldChange}
+            ></lightning-combobox>
+          </div>
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+            <lightning-input
+              type="number"
+              name="timeOffsetMinutes"
+              label="Time offset (minutes)"
+              value={timeOffsetMinutes}
+              step="1"
+              onchange={handleFieldChange}
+              field-level-help="Offset from midnight in the configured scheduling time zone."
+            ></lightning-input>
+          </div>
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+            <lightning-combobox
+              name="retentionPeriod"
+              label="History retention"
+              value={retentionPeriod}
+              options={retentionOptions}
+              onchange={handleFieldChange}
+            ></lightning-combobox>
+          </div>
+        </div>
+
+        <template lwc:if={isAdmin}>
+          <div class="slds-m-top_medium">
+            <lightning-textarea
+              name="emailAddresses"
+              label="Alert email addresses"
+              value={emailAddresses}
+              onchange={handleFieldChange}
+              field-level-help="Separate multiple addresses with commas or semicolons."
+            ></lightning-textarea>
+          </div>
+        </template>
+
+        <div class="slds-m-top_medium">
+          <lightning-textarea
+            name="comments"
+            label="Comments"
+            value={comments}
+            onchange={handleFieldChange}
+          ></lightning-textarea>
+        </div>
+
+        <div
+          class="slds-box slds-theme_shade slds-m-top_large schedule-summary"
+        >
+          <p>
+            <span><strong>Schedule status: </strong>{scheduleStatusLabel}</span>
+          </p>
+          <p>
+            <span
+              ><strong>Scheduling time zone: </strong
+              >{schedulingTimeZoneLabel}</span
+            >
+          </p>
+          <p>
+            <span><strong>Next run: </strong></span>
+            <template lwc:if={hasNextRunAt}>
+              <lightning-formatted-date-time
+                value={nextRunAt}
+                year="numeric"
+                month="short"
+                day="2-digit"
+                hour="2-digit"
+                minute="2-digit"
+              ></lightning-formatted-date-time>
+            </template>
+            <template lwc:else>Not scheduled</template>
+          </p>
+        </div>
+
+        <div
+          class="slds-m-top_large slds-grid slds-grid_align-spread slds-grid_vertical-align-center"
+        >
+          <div>
+            <template lwc:if={isAdmin}>
+              <lightning-button
+                variant="destructive"
+                label="Delete Scheduled Jobs"
+                onclick={handleAbortJobs}
+                disabled={isActionDisabled}
+                title="Delete all active Org Monitoring scheduled jobs (monitoring and purge)"
+              ></lightning-button>
+            </template>
+          </div>
+          <div>
+            <lightning-button
+              label="Reset"
+              onclick={handleReset}
+              disabled={isActionDisabled}
+              class="slds-m-right_small"
+            ></lightning-button>
+            <lightning-button
+              variant="brand"
+              label="Save Configuration"
+              onclick={handleSave}
+              disabled={isActionDisabled}
+            ></lightning-button>
+          </div>
+        </div>
+        <template lwc:if={isSaving}>
+          <lightning-spinner
+            alternative-text="Saving configuration"
+            size="small"
+          ></lightning-spinner>
+        </template>
+        <template lwc:if={isAborting}>
+          <lightning-spinner
+            alternative-text="Deleting scheduled jobs"
+            size="small"
+          ></lightning-spinner>
+        </template>
+      </template>
+    </div>
+  </lightning-card>
+</template>

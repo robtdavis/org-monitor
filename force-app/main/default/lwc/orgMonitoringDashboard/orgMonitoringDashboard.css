@@ -1,0 +1,30 @@
+.summary-grid {
+  row-gap: 0.75rem;
+}
+
+.summary-card {
+  min-height: 6rem;
+  border-left: 0.25rem solid var(--slds-g-color-border-base-1, #c9c9c9);
+}
+
+.summary-value {
+  margin-top: 0.35rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.normal-count {
+  color: var(--slds-g-color-success-base-50, #2e844a);
+}
+
+.warning-count {
+  color: var(--slds-g-color-warning-base-40, #8c4b02);
+}
+
+.critical-count {
+  color: var(--slds-g-color-error-base-40, #ba0517);
+}
+
+.dashboard-details p + p {
+  margin-top: 0.35rem;
+}

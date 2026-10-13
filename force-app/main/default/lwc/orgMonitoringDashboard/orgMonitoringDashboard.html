@@ -1,0 +1,413 @@
+<template>
+  <lightning-card title="Org Monitoring Dashboard" icon-name="utility:chart">
+    <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+      <div
+        class="slds-grid slds-wrap slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_medium"
+      >
+        <div>
+          <template lwc:if={isDemoMode}>
+            <span class="slds-badge slds-theme_warning">Demo mode</span>
+          </template>
+          <template lwc:if={latestSampledAt}>
+            <span class="slds-m-left_small slds-text-color_weak">
+              Last sampled&nbsp;
+              <lightning-formatted-date-time
+                value={latestSampledAt}
+                year="numeric"
+                month="short"
+                day="2-digit"
+                hour="2-digit"
+                minute="2-digit"
+              ></lightning-formatted-date-time>
+            </span>
+          </template>
+        </div>
+        <div class="slds-button-group" role="group">
+          <lightning-button
+            label={refreshLabel}
+            icon-name="utility:refresh"
+            onclick={handleRefresh}
+            disabled={isLoading}
+          ></lightning-button>
+          <template lwc:if={showHistoryButton}>
+            <lightning-button
+              label="Load History"
+              icon-name="utility:clock"
+              onclick={handleLoadHistory}
+              disabled={isHistoryLoading}
+              class="slds-m-left_x-small"
+            ></lightning-button>
+          </template>
+        </div>
+      </div>
+
+      <template lwc:if={demoNotice}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_warning slds-m-bottom_medium"
+          role="status"
+        >
+          <span class="slds-assistive-text">Demo mode</span>
+          <h2>{demoNotice}</h2>
+        </div>
+      </template>
+
+      <template lwc:if={loadError}>
+        <div
+          class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_medium"
+          role="alert"
+        >
+          <span class="slds-assistive-text">Error</span>
+          <h2>{loadError}</h2>
+        </div>
+      </template>
+
+      <template lwc:if={isLoading}>
+        <lightning-spinner
+          alternative-text="Loading monitoring data"
+        ></lightning-spinner>
+      </template>
+
+      <div class="slds-grid slds-wrap slds-gutters summary-grid">
+        <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4">
+          <article class="slds-box summary-card">
+            <p class="slds-text-title_caps">Normal</p>
+            <p class="summary-value normal-count">{normalCount}</p>
+          </article>
+        </div>
+        <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4">
+          <article class="slds-box summary-card">
+            <p class="slds-text-title_caps">Warning</p>
+            <p class="summary-value warning-count">{warningCount}</p>
+          </article>
+        </div>
+        <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4">
+          <article class="slds-box summary-card">
+            <p class="slds-text-title_caps">Critical</p>
+            <p class="summary-value critical-count">{criticalCount}</p>
+          </article>
+        </div>
+        <div class="slds-col slds-size_1-of-2 slds-large-size_1-of-4">
+          <article class="slds-box summary-card">
+            <p class="slds-text-title_caps">History samples</p>
+            <p class="summary-value">{historyCount}</p>
+          </article>
+        </div>
+      </div>
+
+      <div
+        class="slds-grid slds-wrap slds-gutters slds-m-top_medium dashboard-details"
+      >
+        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+          <p>
+            <span><strong>Schedule: </strong>{scheduleStatusLabel}</span>
+          </p>
+          <p>
+            <span><strong>Next run: </strong>{nextRunLabel}</span>
+          </p>
+        </div>
+        <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+          <p>
+            <span><strong>Retention: </strong>{retentionPeriodLabel}</span>
+          </p>
+          <template lwc:if={retentionNotice}>
+            <p class="slds-text-color_weak">{retentionNotice}</p>
+          </template>
+        </div>
+      </div>
+
+      <div class="slds-m-top_large">
+        <h2 class="slds-text-heading_small slds-m-bottom_small">
+          {readingsHeading}
+        </h2>
+        <template lwc:if={hasRows}>
+          <div class="slds-scrollable_x">
+            <table
+              class="slds-table slds-table_cell-buffer slds-table_bordered"
+              aria-label="Latest org limit readings"
+            >
+              <thead>
+                <tr class="slds-line-height_reset">
+                  <th scope="col">
+                    <div class="slds-truncate" title="Limit">Limit</div>
+                  </th>
+                  <th scope="col">
+                    <div class="slds-truncate" title="Maximum allowed">
+                      Maximum allowed
+                    </div>
+                  </th>
+                  <th scope="col">
+                    <div class="slds-truncate" title="Currently used">
+                      Currently used
+                    </div>
+                  </th>
+                  <th scope="col">
+                    <div class="slds-truncate" title="Remaining">Remaining</div>
+                  </th>
+                  <th scope="col">
+                    <div class="slds-truncate" title="Percent used">
+                      Percent used
+                    </div>
+                  </th>
+                  <th scope="col">
+                    <div class="slds-truncate" title="Status">Status</div>
+                  </th>
+                  <th scope="col">
+                    <div class="slds-truncate" title="Sampled at">
+                      Sampled at
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <template for:each={rows} for:item="row">
+                  <tr key={row.id}>
+                    <th scope="row">
+                      <div class="slds-truncate" title={row.limitName}>
+                        {row.limitName}
+                      </div>
+                    </th>
+                    <td>
+                      <lightning-formatted-number
+                        value={row.maximumAllowed}
+                      ></lightning-formatted-number>
+                    </td>
+                    <td>
+                      <lightning-formatted-number
+                        value={row.currentlyUsed}
+                      ></lightning-formatted-number>
+                    </td>
+                    <td>
+                      <lightning-formatted-number
+                        value={row.remaining}
+                      ></lightning-formatted-number>
+                    </td>
+                    <td>{row.percentDisplay}</td>
+                    <td><span class={row.statusClass}>{row.status}</span></td>
+                    <td>
+                      <template lwc:if={row.sampledAt}>
+                        <lightning-formatted-date-time
+                          value={row.sampledAt}
+                          year="numeric"
+                          month="short"
+                          day="2-digit"
+                          hour="2-digit"
+                          minute="2-digit"
+                        ></lightning-formatted-date-time>
+                      </template>
+                      <template lwc:else>—</template>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </template>
+        <template lwc:else>
+          <div class="slds-box slds-theme_shade">
+            <template lwc:if={isLoading}>Loading limit readings…</template>
+            <template lwc:else>No monitoring samples are available.</template>
+          </div>
+        </template>
+      </div>
+
+      <template lwc:if={historyVisible}>
+        <div class="slds-m-top_large">
+          <div
+            class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_small"
+          >
+            <h2 class="slds-text-heading_small">Monitoring history</h2>
+            <span class="slds-text-color_weak">{historySummary}</span>
+          </div>
+          <template lwc:if={isHistoryLoading}>
+            <lightning-spinner
+              alternative-text="Loading monitoring history"
+              size="small"
+            ></lightning-spinner>
+          </template>
+          <template lwc:if={historyError}>
+            <div
+              class="slds-notify slds-notify_alert slds-alert_error slds-m-bottom_small"
+              role="alert"
+            >
+              <h2>{historyError}</h2>
+            </div>
+          </template>
+          <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+              <lightning-input
+                name="historyLimitName"
+                label="Limit name"
+                value={historyLimitName}
+                onchange={handleHistoryFilterChange}
+              ></lightning-input>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+              <lightning-combobox
+                name="historyStatus"
+                label="Status"
+                value={historyStatus}
+                options={historyStatusOptions}
+                onchange={handleHistoryFilterChange}
+              ></lightning-combobox>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+              <lightning-combobox
+                name="historySortBy"
+                label="Sort by"
+                value={historySortBy}
+                options={historySortOptions}
+                onchange={handleHistoryFilterChange}
+              ></lightning-combobox>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+              <lightning-input
+                type="date"
+                name="historyStartDate"
+                label="From"
+                value={historyStartDate}
+                onchange={handleHistoryFilterChange}
+              ></lightning-input>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+              <lightning-input
+                type="date"
+                name="historyEndDate"
+                label="To"
+                value={historyEndDate}
+                onchange={handleHistoryFilterChange}
+              ></lightning-input>
+            </div>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4">
+              <lightning-combobox
+                name="historySortDirection"
+                label="Order"
+                value={historySortDirection}
+                options={historySortDirectionOptions}
+                onchange={handleHistoryFilterChange}
+              ></lightning-combobox>
+            </div>
+            <div
+              class="slds-col slds-size_1-of-1 slds-medium-size_1-of-4 slds-align-bottom"
+            >
+              <lightning-button
+                label="Apply Filters"
+                variant="brand"
+                onclick={handleApplyHistoryFilters}
+                disabled={isHistoryLoading}
+                class="slds-m-top_large"
+              ></lightning-button>
+            </div>
+          </div>
+          <template lwc:if={hasHistoryRows}>
+            <div class="slds-scrollable_x">
+              <table
+                class="slds-table slds-table_cell-buffer slds-table_bordered"
+                aria-label="Monitoring history"
+              >
+                <thead>
+                  <tr class="slds-line-height_reset">
+                    <th scope="col">
+                      <div class="slds-truncate" title="Limit">Limit</div>
+                    </th>
+                    <th scope="col">
+                      <div class="slds-truncate" title="Maximum allowed">
+                        Maximum allowed
+                      </div>
+                    </th>
+                    <th scope="col">
+                      <div class="slds-truncate" title="Currently used">
+                        Currently used
+                      </div>
+                    </th>
+                    <th scope="col">
+                      <div class="slds-truncate" title="Remaining">
+                        Remaining
+                      </div>
+                    </th>
+                    <th scope="col">
+                      <div class="slds-truncate" title="Percent used">
+                        Percent used
+                      </div>
+                    </th>
+                    <th scope="col">
+                      <div class="slds-truncate" title="Status">Status</div>
+                    </th>
+                    <th scope="col">
+                      <div class="slds-truncate" title="Sampled at">
+                        Sampled at
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <template for:each={historyRows} for:item="row">
+                    <tr key={row.id}>
+                      <th scope="row">
+                        <div class="slds-truncate" title={row.limitName}>
+                          {row.limitName}
+                        </div>
+                      </th>
+                      <td>
+                        <lightning-formatted-number
+                          value={row.maximumAllowed}
+                        ></lightning-formatted-number>
+                      </td>
+                      <td>
+                        <lightning-formatted-number
+                          value={row.currentlyUsed}
+                        ></lightning-formatted-number>
+                      </td>
+                      <td>
+                        <lightning-formatted-number
+                          value={row.remaining}
+                        ></lightning-formatted-number>
+                      </td>
+                      <td>{row.percentDisplay}</td>
+                      <td><span class={row.statusClass}>{row.status}</span></td>
+                      <td>
+                        <template lwc:if={row.sampledAt}>
+                          <lightning-formatted-date-time
+                            value={row.sampledAt}
+                            year="numeric"
+                            month="short"
+                            day="2-digit"
+                            hour="2-digit"
+                            minute="2-digit"
+                          ></lightning-formatted-date-time>
+                        </template>
+                        <template lwc:else>—</template>
+                      </td>
+                    </tr>
+                  </template>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <template lwc:if={historyEmpty}>
+            <div class="slds-box slds-theme_shade">
+              No history samples were found.
+            </div>
+          </template>
+          <div
+            class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-top_small"
+          >
+            <span class="slds-text-color_weak">{historyPageSummary}</span>
+            <div>
+              <lightning-button
+                label="Previous"
+                onclick={handlePreviousHistoryPage}
+                disabled={previousPageDisabled}
+                class="slds-m-right_x-small"
+              ></lightning-button>
+              <lightning-button
+                label="Next"
+                onclick={handleNextHistoryPage}
+                disabled={nextPageDisabled}
+              ></lightning-button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </lightning-card>
+</template>

@@ -1,0 +1,20 @@
+{
+  "packageDirectories": [
+    {
+      "versionName": "ver 0.1",
+      "versionNumber": "0.1.0.NEXT",
+      "path": "force-app",
+      "default": true,
+      "package": "Org Monitoring",
+      "versionDescription": "Org Monitoring application for Salesforce"
+    }
+  ],
+  "name": "api-monitor",
+  "namespace": "",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "67.0",
+  "packageAliases": {
+    "Org Monitoring": "0Hog80000004zsvCAA",
+    "Org Monitoring@0.1.0-1": "04tg8000000TPELAA4"
+  }
+}
